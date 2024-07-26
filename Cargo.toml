@@ -1,0 +1,18 @@
+[package]
+name = "obsidian-sqlite-vtab"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "obsidian_sqlite_vtab"
+crate-type=["lib", "cdylib", "staticlib"]
+
+
+[dependencies]
+anyhow = "1.0.86"
+rusqlite = { version = "0.32.0", features = ["vtab"] }
+sqlite-loadable = "0.0.5"
+walkdir = "2.5.0"
+
+[dev-dependencies]
+rusqlite = { version = "0.32.0", features = ["bundled", "vtab", "load_extension"], default-features = false }
