@@ -39,7 +39,6 @@ test: test_dist
 sql dirname="test_data": build
   echo "select obsidian_version(); \
   CREATE VIRTUAL TABLE vt \
-  USING obsidian(dirname='{{dirname}}'); \
+  USING obsidian_notes(dirname='{{dirname}}'); \
   select * from vt;" \
   | {{sqlite_bin}} -box -cmd ".load target/debug/{{cargo_artefact_name}}"
-  
