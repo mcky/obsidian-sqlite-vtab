@@ -1,0 +1,1 @@
+This note is nested in the /nested folder

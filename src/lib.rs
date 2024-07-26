@@ -4,6 +4,7 @@ use sqlite_loadable::{api, define_virtual_table};
 use sqlite_loadable::{define_scalar_function, prelude::*};
 use sqlite_loadable::{BestIndexError, Error, Result};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::hash::Hash;
 use std::path::Path;
 use std::{mem, os::raw::c_int};
@@ -239,8 +240,12 @@ pub fn parse_path(_db: *mut sqlite3, value: ConfigOptionValue) -> Result<String>
 fn read_data(path: &str) -> anyhow::Result<Records> {
     let mut records: Records = Vec::new();
 
-    for entry in WalkDir::new(path) {
-        let entry = entry?;
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        // @TODO: Make this configurable
+        .filter(|entry| entry.path().extension().and_then(OsStr::to_str) == Some("md"))
+    {
         if entry.file_type().is_file() {
             let file_contents = std::fs::read_to_string(entry.path())?;
 
