@@ -3,11 +3,13 @@ use sqlite_loadable::vtab_argparse::{parse_argument, Argument, ConfigOptionValue
 use sqlite_loadable::{api, define_virtual_table};
 use sqlite_loadable::{define_scalar_function, prelude::*};
 use sqlite_loadable::{BestIndexError, Error, Result};
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::path::Path;
 use std::{mem, os::raw::c_int};
 use walkdir::WalkDir;
 
-pub type Record = Vec<String>;
+pub type Record = HashMap<String, String>;
 pub type Records = Vec<Record>;
 pub type Headers = Vec<String>;
 
@@ -58,12 +60,9 @@ impl<'vtab> VTab<'vtab> for ObsidianTable {
         args: VTabArguments,
     ) -> Result<(String, Self)> {
         let arguments = parse_arguments(db, args.arguments)?;
-        let schema = r#"
-            CREATE TABLE x(
-                "file_path" TEXT,
-                "file_contents" TEXT
-            );
-        "#;
+        let mut property_types = HashMap::new();
+
+        let schema = sql_schema_from_properties(property_types);
 
         let vtab = Self {
             base: unsafe { mem::zeroed() },
@@ -71,7 +70,7 @@ impl<'vtab> VTab<'vtab> for ObsidianTable {
             path: arguments.dirname,
         };
 
-        Ok((schema.to_string(), vtab))
+        Ok((schema, vtab))
     }
 
     fn destroy(&self) -> Result<()> {
@@ -110,7 +109,10 @@ impl ObsidianCursor {
     fn new(records: Records) -> Result<Self> {
         let mut cursor = Self {
             base: unsafe { mem::zeroed() },
-            headers: vec!["fieldname".to_string(), "value".to_string()],
+            headers: vec![
+                "file_path".to_string(),
+                "file_contents".to_string(),
+            ],
             records,
             rowid: 0,
             eof: false,
@@ -156,7 +158,12 @@ impl VTabCursor for ObsidianCursor {
         let row_idx = (self.rowid - 1) as usize;
 
         if let Some(record) = &self.records.get(row_idx) {
-            api::result_text(ctx, &record[col_idx as usize].to_owned())?;
+            let col_name = &self.headers[col_idx as usize];
+            if let Some(sx) = record.get(col_name) {
+                api::result_text(ctx, sx)?;
+            } else {
+                api::result_null(ctx);
+            }
         } else {
             api::result_null(ctx);
         }
@@ -229,18 +236,87 @@ pub fn parse_path(_db: *mut sqlite3, value: ConfigOptionValue) -> Result<String>
     Ok(value)
 }
 
-pub fn read_data(path: &str) -> anyhow::Result<Records> {
+fn read_data(path: &str) -> anyhow::Result<Records> {
     let mut records: Records = Vec::new();
 
     for entry in WalkDir::new(path) {
         let entry = entry?;
         if entry.file_type().is_file() {
             let file_contents = std::fs::read_to_string(entry.path())?;
-            let record = vec![entry.path().display().to_string(), file_contents];
+
+            let mut record: HashMap<String, String> = HashMap::new();
+
+            record.insert("file_path".to_string(), entry.path().display().to_string());
+            record.insert("file_contents".to_string(), file_contents);
 
             records.push(record);
         }
     }
 
     Ok(records)
+}
+
+fn sql_schema_from_properties(properties: HashMap<&str, &str>) -> String {
+    let mut props = properties.clone();
+    props.insert("file_path", "TEXT");
+    props.insert("file_contents", "TEXT");
+
+    sql_schema_from_map(props)
+}
+
+fn sql_schema_from_map(properties: HashMap<&str, &str>) -> String {
+    let mut columns = properties
+        .into_iter()
+        .map(|(k, v)| format!("\"{k}\" {v}"))
+        .collect::<Vec<String>>();
+
+    columns.sort();
+
+    format!(
+        "CREATE TABLE x(\n    {columns}\n);",
+        columns = columns.join(",\n    ")
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indoc::indoc;
+    use std::collections::HashMap;
+
+    #[test]
+    fn sql_schema_from_properties_always_returns_base() {
+        let out = sql_schema_from_properties(HashMap::new());
+
+        assert_eq!(
+            out,
+            indoc! { r#"
+            CREATE TABLE x(
+                "file_contents" TEXT,
+                "file_path" TEXT
+            );"#
+            }
+        )
+    }
+
+    #[test]
+    fn sql_schema_from_properties_returns_properties() {
+        let mut properties = HashMap::new();
+        properties.insert("str_key", "TEXT");
+        properties.insert("int_key", "INTEGER");
+
+        let out = sql_schema_from_properties(properties);
+
+        assert_eq!(
+            out,
+            indoc! { r#"
+            CREATE TABLE x(
+                "file_contents" TEXT,
+                "file_path" TEXT,
+                "int_key" INTEGER,
+                "str_key" TEXT
+            );"#
+            }
+        )
+    }
 }
