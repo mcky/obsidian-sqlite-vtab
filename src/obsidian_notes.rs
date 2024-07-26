@@ -83,8 +83,6 @@ pub struct ObsidianCursor {
 
 impl ObsidianCursor {
     fn new(records: Records) -> Result<Self> {
-        println!("{records:?}");
-
         let mut cursor = Self {
             base: unsafe { mem::zeroed() },
             headers: vec!["file_path".to_string(), "file_contents".to_string()],
@@ -134,8 +132,6 @@ impl VTabCursor for ObsidianCursor {
 
         if let Some(record) = &self.records.get(row_idx) {
             let col_name = &self.headers[col_idx as usize];
-
-            // println!("{col_idx} {xx} :: {record:?}");
 
             if let Some(sx) = record.get(col_name) {
                 api::result_text(ctx, sx)?;
