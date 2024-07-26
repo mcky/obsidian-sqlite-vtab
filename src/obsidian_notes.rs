@@ -1,7 +1,7 @@
+use sqlite_loadable::api;
+use sqlite_loadable::prelude::*;
 use sqlite_loadable::table::{IndexInfo, VTab, VTabArguments, VTabCursor};
 use sqlite_loadable::vtab_argparse::{parse_argument, Argument, ConfigOptionValue};
-use sqlite_loadable::{api, define_virtual_table};
-use sqlite_loadable::{define_scalar_function, prelude::*};
 use sqlite_loadable::{BestIndexError, Error, Result};
 use std::collections::HashMap;
 use std::path::Path;
