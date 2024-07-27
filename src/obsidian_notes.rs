@@ -8,7 +8,7 @@ use std::path::Path;
 use std::{mem, os::raw::c_int};
 
 use crate::notes::flatten_note;
-use crate::{notes, properties, Headers, Properties, Records};
+use crate::{notes, properties, Headers, Records};
 
 #[repr(C)]
 pub struct ObsidianNotesTable {
@@ -36,8 +36,7 @@ impl<'vtab> VTab<'vtab> for ObsidianNotesTable {
         args: VTabArguments,
     ) -> Result<(String, Self)> {
         let arguments = parse_arguments(db, args.arguments)?;
-        let mut property_types = HashMap::new();
-
+        let property_types = HashMap::new();
         let schema = properties::sql_schema_from_properties(property_types);
 
         let vtab = Self {
@@ -54,17 +53,17 @@ impl<'vtab> VTab<'vtab> for ObsidianNotesTable {
     }
 
     fn best_index(&self, mut info: IndexInfo) -> core::result::Result<(), BestIndexError> {
-        // TODO: No matter how the set is queried, always jsut read from top to bottom,
+        // TODO: No matter how the set is queried, always just read from top to bottom,
         info.set_estimated_cost(10000.0);
         info.set_estimated_rows(10000);
-        // info.set_idxnum(1);
+        info.set_idxnum(1);
 
         Ok(())
     }
 
     fn open(&mut self) -> Result<Self::Cursor> {
-        let records =
-            notes::read_notes(&self.path).map_err(|err| Error::new_message(&err.to_string()))?;
+        let records = notes::read_notes_in_dir(&self.path)
+            .map_err(|err| Error::new_message(&err.to_string()))?;
 
         Self::Cursor::new(records)
     }

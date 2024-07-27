@@ -12,7 +12,7 @@ pub type Properties = HashMap<String, String>;
 pub type Records = Vec<ObsidianNote>;
 pub type Headers = Vec<String>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ObsidianNote {
     file_path: PathBuf,
     file_contents: String,

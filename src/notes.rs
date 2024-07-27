@@ -1,25 +1,31 @@
-use std::{collections::HashMap, ffi::OsStr, fs};
+use std::{ffi::OsStr, fs, path::PathBuf};
 use walkdir::WalkDir;
 
 use crate::{ObsidianNote, Properties, Records};
 
-pub fn read_notes(path: &str) -> anyhow::Result<Records> {
+pub fn read_note(file_path: PathBuf) -> anyhow::Result<ObsidianNote> {
+    let file_contents = fs::read_to_string(&file_path)?;
+
+    let note = ObsidianNote {
+        file_path,
+        file_contents,
+        properties: None,
+    };
+
+    Ok(note)
+}
+
+pub fn read_notes_in_dir(path: &str) -> anyhow::Result<Records> {
     let mut records: Records = Vec::new();
 
     for entry in WalkDir::new(path)
         .into_iter()
-        .filter_map(|entry| entry.ok())
+        .filter_map(Result::ok)
         // @TODO: Make this configurable
         .filter(|entry| entry.path().extension().and_then(OsStr::to_str) == Some("md"))
     {
         if entry.file_type().is_file() {
-            let file_contents = fs::read_to_string(entry.path())?;
-
-            let note = ObsidianNote {
-                file_path: entry.into_path(),
-                file_contents: file_contents,
-                properties: None,
-            };
+            let note = read_note(entry.into_path())?;
 
             records.push(note);
         }
@@ -50,14 +56,11 @@ pub fn flatten_note(note: &ObsidianNote) -> Properties {
 
 #[cfg(test)]
 mod tests {
-    use crate::Properties;
-
     use super::*;
 
     use anyhow::Context;
     use assert_fs::prelude::*;
     use assert_fs::TempDir;
-    use maplit::hashmap;
 
     fn copy_fixtures_to_tmp_dir(source_dir: &str) -> TempDir {
         let temp_dir = TempDir::new().expect("failed to create new TempDir");
@@ -110,7 +113,7 @@ mod tests {
             .expect("failed to create file in TempDir");
 
         let path = dir.path().to_str().unwrap();
-        let notes = read_notes(path).expect("couldn't read notes");
+        let notes = read_notes_in_dir(path).expect("couldn't read notes");
 
         assert!(
             notes.contains(&first_note),

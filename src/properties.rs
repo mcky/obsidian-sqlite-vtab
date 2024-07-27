@@ -5,12 +5,12 @@ pub fn sql_schema_from_properties(properties: HashMap<&str, &str>) -> String {
     props.insert("file_path", "TEXT");
     props.insert("file_contents", "TEXT");
 
-    sql_schema_from_map(props)
+    sql_schema_from_map(&props)
 }
 
-fn sql_schema_from_map(properties: HashMap<&str, &str>) -> String {
+fn sql_schema_from_map(properties: &HashMap<&str, &str>) -> String {
     let mut columns = properties
-        .into_iter()
+        .iter()
         .map(|(k, v)| format!("\"{k}\" {v}"))
         .collect::<Vec<String>>();
 
