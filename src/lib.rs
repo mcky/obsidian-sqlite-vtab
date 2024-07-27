@@ -2,18 +2,26 @@ use sqlite_loadable::Result;
 use sqlite_loadable::{api, define_virtual_table};
 use sqlite_loadable::{define_scalar_function, prelude::*};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 mod notes;
 mod obsidian_notes;
 mod properties;
 
-pub type Record = HashMap<String, String>;
-pub type Records = Vec<Record>;
+pub type Properties = HashMap<String, String>;
+pub type Records = Vec<ObsidianNote>;
 pub type Headers = Vec<String>;
+
+#[derive(Debug, PartialEq)]
+pub struct ObsidianNote {
+    file_path: PathBuf,
+    file_contents: String,
+    properties: Option<Properties>,
+}
 
 #[sqlite_entrypoint]
 pub fn sqlite3_obsidiansqlitevtab_init(db: *mut sqlite3) -> Result<()> {
-    define_virtual_table::<obsidian_notes::ObsidianTable>(db, "obsidian_notes", None)?;
+    define_virtual_table::<obsidian_notes::ObsidianNotesTable>(db, "obsidian_notes", None)?;
     define_scalar_function(
         db,
         "obsidian_version",

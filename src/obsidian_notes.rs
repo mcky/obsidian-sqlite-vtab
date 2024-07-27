@@ -7,17 +7,18 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::{mem, os::raw::c_int};
 
-use crate::{notes, properties, Headers, Records};
+use crate::notes::flatten_note;
+use crate::{notes, properties, Headers, Properties, Records};
 
 #[repr(C)]
-pub struct ObsidianTable {
+pub struct ObsidianNotesTable {
     /// must be first
     base: sqlite3_vtab,
     db: *mut sqlite3,
     path: String,
 }
 
-impl<'vtab> VTab<'vtab> for ObsidianTable {
+impl<'vtab> VTab<'vtab> for ObsidianNotesTable {
     type Aux = u8;
     type Cursor = ObsidianCursor;
 
@@ -132,9 +133,10 @@ impl VTabCursor for ObsidianCursor {
 
         if let Some(record) = &self.records.get(row_idx) {
             let col_name = &self.headers[col_idx as usize];
+            let flattened = flatten_note(record);
 
-            if let Some(sx) = record.get(col_name) {
-                api::result_text(ctx, sx)?;
+            if let Some(value) = flattened.get(col_name) {
+                api::result_text(ctx, value)?;
             } else {
                 api::result_null(ctx);
             }
