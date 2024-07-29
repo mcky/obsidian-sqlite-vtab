@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 mod notes;
-mod obsidian_notes;
+mod notes_vtab;
 mod properties;
 
 pub type Properties = HashMap<String, String>;
@@ -21,7 +21,7 @@ pub struct ObsidianNote {
 
 #[sqlite_entrypoint]
 pub fn sqlite3_obsidiansqlitevtab_init(db: *mut sqlite3) -> Result<()> {
-    define_virtual_table::<obsidian_notes::ObsidianNotesTable>(db, "obsidian_notes", None)?;
+    define_virtual_table::<notes_vtab::ObsidianNotesTable>(db, "obsidian_notes", None)?;
     define_scalar_function(
         db,
         "obsidian_version",
